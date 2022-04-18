@@ -2,11 +2,10 @@ import glfw
 from datetime import datetime as dt
 import OpenGL.GL as gl
 import glm
-from ctypes import c_void_p, sizeof
+from ctypes import c_void_p
 import logging
-import time
 
-def get_current_time(gmt=-3):
+def get_current_time():
     current_time = dt.now()
     
     c_time = []
@@ -21,7 +20,7 @@ def define_dot(position, size):
         glm.vec3([ 0,-1, 0]), 
         glm.vec3([ 1, 0, 0]), 
         glm.vec3([ 0, 1, 0]),
-        glm.vec3([ 0,-1, 0]), 
+        glm.vec3([ 0,-1, 0]),
         glm.vec3([ 0, 1, 0]), 
         glm.vec3([-1, 0, 0])
     ])
@@ -52,11 +51,11 @@ def define_bar(position, size, length, angle):
         bar[i] += position
     return bar
 def define_number(number, op=0):
-    bar_struct = (define_bar(glm.vec3([ 0,   0, 0]), 5, 70, 0),
-                  define_bar(glm.vec3([ 0,  72, 0]), 5, 70, 0),
+    bar_struct = (define_bar(glm.vec3([ 0,   0, 0]), 5, 70,  0),
+                  define_bar(glm.vec3([ 0,  72, 0]), 5, 70,  0),
                   define_bar(glm.vec3([ 42, 36, 0]), 5, 60, 90),
                   define_bar(glm.vec3([ 42,-36, 0]), 5, 60, 90),
-                  define_bar(glm.vec3([ 0, -72, 0]), 5, 70, 0),
+                  define_bar(glm.vec3([ 0, -72, 0]), 5, 70,  0),
                   define_bar(glm.vec3([-42,-36, 0]), 5, 60, 90),
                   define_bar(glm.vec3([-42, 36, 0]), 5, 60, 90))
 
@@ -67,13 +66,16 @@ def define_number(number, op=0):
                 bars = bar_struct[bar]
             else:
                 bars = bars.concat(bar_struct[bar])
+    
     if op == 0:
         VertexBuffer = gl.glGenBuffers(1)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, VertexBuffer)
-        gl.glBufferData(gl.GL_ARRAY_BUFFER, bars.nbytes, bars.ptr, gl.GL_STATIC_DRAW)
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, bars.nbytes, bars.ptr, gl.GL_DYNAMIC_DRAW)
         return VertexBuffer, bars.length
     else:
         return bars
+
+
 def draw_dot(VertexBuffer, n_of_vertices):
     gl.glEnableVertexAttribArray(0)
     gl.glBindBuffer(gl.GL_ARRAY_BUFFER, VertexBuffer)
@@ -99,21 +101,6 @@ def draw_number(number, position_x):
     
     gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
     gl.glDisableVertexAttribArray(0)
-# def draw_number(VertexBuffer, n_of_vertices, position_x, ProgramID):
-#     # gl.glUseProgram(ProgramID)
-    
-#     # Position_x_Loc = gl.glGetUniformLocation(ProgramID, "Position_x")
-#     # gl.glUniform1f(Position_x_Loc, float(0))
-    
-#     gl.glEnableVertexAttribArray(0)
-#     gl.glBindBuffer(gl.GL_ARRAY_BUFFER, VertexBuffer)
-#     gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 0, c_void_p(0))
-    
-#     gl.glDrawArrays(gl.GL_TRIANGLES, 0, 3*n_of_vertices)
-    
-#     gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
-#     gl.glDisableVertexAttribArray(0)
-#     # gl.glUseProgram(0)    
 
 
 def LoadShaders(vertex_shader_file, fragment_shader_file):
@@ -167,7 +154,7 @@ def main():
     glfw.window_hint(glfw.RESIZABLE, glfw.FALSE)
     glfw.window_hint(glfw.SAMPLES, 4)
     width, height = 900, 200
-    window = glfw.create_window(width, height, "Clock", None, None)
+    window = glfw.create_window(width, height, "DigiClock", None, None)
     glfw.make_context_current(window)
     
     # Definindo projeção ortogonal
@@ -193,17 +180,20 @@ def main():
     numbers = []
     for i in range(10):
         numbers.append(define_number(n_struct[i]))
+       
+    Numbers_ProgramID = LoadShaders("./glsl/vertex_shader.glsl", 
+                                    "./glsl/fragment_shader.glsl")
     
     # Definindo buffers de vértices dos pontos
-    dot_sup1_buffer, dot_sup1_size = define_dot(glm.vec3([-150, 20,0]), 10)
-    dot_inf1_buffer, dot_inf1_size = define_dot(glm.vec3([-150,-20,0]), 10)
-    dot_sup2_buffer, dot_sup2_size = define_dot(glm.vec3([ 150, 20,0]), 10)
-    dot_inf2_buffer, dot_inf2_size = define_dot(glm.vec3([ 150,-20,0]), 10)
+    dot_inf1_buffer, dot_inf1_size = define_dot(glm.vec3([-150,-20, 0]), 10)
+    dot_sup1_buffer, dot_sup1_size = define_dot(glm.vec3([-150, 20, 0]), 10)
+    dot_inf2_buffer, dot_inf2_size = define_dot(glm.vec3([ 150,-20, 0]), 10)
+    dot_sup2_buffer, dot_sup2_size = define_dot(glm.vec3([ 150, 20, 0]), 10)
     
-    gl.glClearColor(0.0, 0.0, 0.0, 1.0)
+    gl.glEnable(gl.GL_MULTISAMPLE)
+    gl.glClearColor(0.1, 0.1, 0.1, 1.0)
 
     while not glfw.window_should_close(window):
-        gl.glEnable(gl.GL_MULTISAMPLE)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
     
         # Captura o valor da  hora corrente
@@ -216,8 +206,6 @@ def main():
         
         for i in range(6):
             draw_number(define_number(n_struct[current_time[i]], op=1), number_positions[i])
-        
-        time.sleep(1)
         
         glfw.swap_buffers(window)
         glfw.poll_events()
